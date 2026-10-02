@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>實驗室大危機：博士的合格試煉 (Lab Danger: The Doctor's Trial)</title>
+  <meta name="description" content="國中七年級生物 CH1 遊戲化複習射擊遊戲：生命世界、科學方法、實驗室與顯微鏡倒像光學機制。">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="game-wrapper">
+    <!-- 抬頭顯示 (HUD) -->
+    <header class="hud-bar">
+      <!-- 左側：生命條與跑速增益 -->
+      <div class="hud-section">
+        <div class="hp-container">
+          <span class="hp-label">HP</span>
+          <div class="hp-bar-bg">
+            <div id="hpFill" class="hp-fill"></div>
+          </div>
+          <span id="hpText" class="hp-text">100 / 100</span>
+        </div>
+        <div id="speedBonusBadge" class="speed-badge hidden">⚡ 速度 +15%</div>
+      </div>
+
+      <!-- 中間：鏡像警示與關卡進程 -->
+      <div class="hud-section">
+        <div id="levelBadge" class="hud-badge level-badge">區域 1 / 3</div>
+        <div class="terminal-hud">
+          <span>終端機解鎖：</span>
+          <span id="terminalProgress" style="font-weight: 700;">0 / 3</span>
+          <div id="terminalIcons" class="term-dots"></div>
+        </div>
+        <div id="mirrorWarning" class="mirror-warning hidden">🔬 ⚠️ 鏡像中！(操作倒反)</div>
+      </div>
+
+      <!-- 右側：分數與音效開關 -->
+      <div class="hud-section">
+        <div class="hud-badge">
+          <span>分數：</span>
+          <span id="scoreDisplay" class="score-num">0</span>
+        </div>
+        <button id="muteBtn" class="hud-btn" title="切換音效">🔊 音效</button>
+      </div>
+    </header>
+
+    <!-- Canvas 遊戲畫布與即時浮動提示 -->
+    <main class="canvas-container">
+      <canvas id="gameCanvas" width="1024" height="640"></canvas>
+
+      <!-- 即時幽默反饋提示浮動條 (規格 3.2 & 5) -->
+      <div id="floatingFeedback" class="floating-feedback">
+        <div id="feedbackTitle" class="feedback-title"></div>
+        <div id="feedbackMsg" class="feedback-msg"></div>
+      </div>
+    </main>
+
+    <!-- 開始遊戲畫面彈窗 -->
+    <div id="startModal" class="modal-overlay">
+      <div class="start-card">
+        <div class="start-header">
+          <h1 class="game-title">實驗室大危機：博士的合格試煉</h1>
+          <p class="game-subtitle">Lab Danger: The Doctor's Trial ｜ 國中生物 CH1 戰鬥複習</p>
+        </div>
+
+        <div class="mission-intro">
+          <strong>🚨 警報通報：</strong>培養室突變細菌全面外洩！身為實習研究員，你必須突破三道氣閘門逃脫。途中必須啟動博士配置的【知識終端機】以解除氣閘封鎖，運用精準射擊與課本知識化解危機！
+        </div>
+
+        <div class="instructions-grid">
+          <div class="inst-item">
+            <span class="inst-icon">⌨️</span>
+            <div class="inst-text">
+              <strong>WASD 或 方向鍵</strong>
+              <p>移動角色閃避細菌。碰到小怪會扣 15 HP！</p>
+            </div>
+          </div>
+          <div class="inst-item">
+            <span class="inst-icon">🖱️</span>
+            <div class="inst-text">
+              <strong>滑鼠左鍵 定向射擊</strong>
+              <p>滑鼠游標瞄準，發射高能射線消滅突變菌！</p>
+            </div>
+          </div>
+          <div class="inst-item">
+            <span class="inst-icon">❓</span>
+            <div class="inst-text">
+              <strong>黃色問號 知識終端機</strong>
+              <p>靠近自動暫停答題。答對補血加速，答錯扣血！</p>
+            </div>
+          </div>
+          <div class="inst-item">
+            <span class="inst-icon">🔬</span>
+            <div class="inst-text">
+              <strong>紫色顯微鏡 鏡像污染區</strong>
+              <p>模擬複式顯微鏡倒像！進入後操作上下左右反轉！</p>
+            </div>
+          </div>
+        </div>
+
+        <button id="startBtn" class="primary-btn">啟動試煉 (START TRIAL)</button>
+      </div>
+    </div>
+
+    <!-- 答題彈窗 (Quiz Terminal) -->
+    <div id="quizModal" class="modal-overlay hidden">
+      <div class="quiz-card">
+        <div class="quiz-header">
+          <div class="quiz-title-tag">
+            <span>💻 [ 知識終端機已連線 ]</span>
+          </div>
+          <div class="quiz-badges">
+            <span id="quizChapter" class="badge-ch">國中生物 1-1</span>
+            <span id="quizCategory" class="badge-cat">考點分析</span>
+          </div>
+        </div>
+
+        <div class="quiz-question-box">
+          <div id="quizQuestion" class="quiz-q-text"></div>
+        </div>
+
+        <div id="quizOptionsContainer" class="quiz-options-grid">
+          <!-- 動態生成 A, B, C, D 選項按鈕 -->
+        </div>
+
+        <div class="quiz-hint-footer">
+          💡 可使用滑鼠點擊選項，或直接按鍵盤快捷鍵 [A]、[B]、[C]、[D]
+        </div>
+      </div>
+    </div>
+
+    <!-- 結算復盤畫面 (博士實驗評估日誌) -->
+    <div id="evalModal" class="modal-overlay hidden">
+      <div class="eval-card">
+        <div class="eval-header">
+          <div>
+            <h2 id="evalTitle" class="eval-title">博士實驗評估日誌</h2>
+            <p class="eval-subtitle">Doctor's Evaluation & Review Log</p>
+          </div>
+        </div>
+
+        <!-- 數據統計 -->
+        <div class="eval-metrics-grid">
+          <div class="eval-metric-box">
+            <div class="metric-label">最終試煉得分</div>
+            <div id="evalScore" class="metric-val">0</div>
+          </div>
+          <div class="eval-metric-box">
+            <div class="metric-label">學科答對率</div>
+            <div id="evalAccuracy" class="metric-val">0%</div>
+          </div>
+          <div class="eval-metric-box">
+            <div class="metric-label">通關狀態</div>
+            <div id="evalLevel" class="metric-val">第 1 區</div>
+          </div>
+        </div>
+
+        <!-- 博士評語 -->
+        <div id="evalDoctorQuote" class="eval-quote-box"></div>
+
+        <!-- 逐題解析複盤清單 -->
+        <div id="evalList" class="eval-list-container">
+          <!-- 動態生成作答卡片 -->
+        </div>
+
+        <div class="eval-footer">
+          <button id="restartBtn" class="primary-btn">再次挑戰 (RETRY)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 引入遊戲邏輯腳本 (純前端無依賴，支援本機 file:// 及 GitHub Pages) -->
+  <script src="js/quizBank.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/levelManager.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
